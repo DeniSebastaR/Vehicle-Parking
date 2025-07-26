@@ -1,0 +1,26 @@
+<?php
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "VehicleParkingDB";
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+$sql = "SELECT * FROM ParkingSlot WHERE IsOccupied = FALSE";
+$result = $conn->query($sql);
+
+if ($result->num_rows > 0) {
+    echo "<h1>Available Parking Slots</h1>";
+    while($row = $result->fetch_assoc()) {
+        echo "Slot ID: " . $row["SlotID"] . " - Slot Type: " . $row["SlotType"] . "<br>";
+    }
+} else {
+    echo "No available slots!";
+}
+
+$conn->close();
+?>
