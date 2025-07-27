@@ -1,0 +1,334 @@
+DROP DATABASE IF EXISTS ParkingManagement;
+CREATE DATABASE ParkingManagement;
+USE ParkingManagement;
+
+CREATE TABLE Vehicles (
+    VehicleID INT PRIMARY KEY AUTO_INCREMENT,
+    LicensePlate VARCHAR(15) NOT NULL UNIQUE,
+    VehicleType VARCHAR(20),
+    OwnerName VARCHAR(50)
+);
+CREATE TABLE ParkingSlots (
+    SlotID INT PRIMARY KEY AUTO_INCREMENT,
+    SlotNumber VARCHAR(100) NOT NULL UNIQUE,
+    Status VARCHAR(10) CHECK (Status IN ('Available', 'Occupied'))
+);
+CREATE TABLE Transactions (
+    TransactionID INT PRIMARY KEY AUTO_INCREMENT,
+    VehicleID INT,
+    SlotID INT,
+    EntryTime DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ExitTime DATETIME,
+    ExitCharge DECIMAL(10,2),
+    FOREIGN KEY (VehicleID) REFERENCES Vehicles(VehicleID),
+    FOREIGN KEY (SlotID) REFERENCES ParkingSlots(SlotID)
+);
+
+INSERT INTO ParkingSlots (SlotNumber, Status) VALUES
+('A', 'Available'),
+('B', 'Available'),
+('C', 'Available');
+
+INSERT INTO Vehicles (LicensePlate, VehicleType, OwnerName) VALUES
+('TN01AB1234', 'Car', 'John Doe'),
+('TN02XY5678', 'Bike', 'Alice Smith');
+
+INSERT INTO Transactions (VehicleID, SlotID, EntryTime) VALUES
+(1, 1, NOW());
+SELECT * FROM ParkingSlots WHERE Status = 'Available';
+INSERT INTO Transactions (VehicleID, SlotID, EntryTime) VALUES (1, 1, NOW());
+UPDATE ParkingSlots SET Status = 'Occupied' WHERE SlotID = 1;
+UPDATE Transactions SET ExitTime = NOW(), ExitCharge = 100 WHERE TransactionID = 1;
+UPDATE ParkingSlots SET Status = 'Available' WHERE SlotID = (SELECT SlotID FROM Transactions WHERE TransactionID = 1);
+SELECT 
+    VehicleID, SlotID, EntryTime, 
+    COALESCE(ExitTime, 'Still Parked') AS ExitTime, 
+    COALESCE(ExitCharge, 'Pending') AS ExitCharge
+FROM Transactions;
+
+
+
+JavaSwing Program
+
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+import javax.swing.table.DefaultTableModel;
+
+public class ParkingSystemApp extends JFrame {
+
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/ParkingManagement";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "Deni@2006";
+    private Connection conn;
+
+    public ParkingSystemApp() {
+        connectDatabase();
+        showIndexPage();
+    }
+
+    private void connectDatabase() {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            System.out.println("Connected to database.");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "DB Connection Failed: " + e.getMessage());
+        }
+    }
+
+    private void showIndexPage() {
+        setTitle("Vehicle Parking System - Home");
+        setSize(420, 350);
+        setLayout(null);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        getContentPane().setBackground(new Color(245, 245, 255)); // subtle light purple
+
+        Font font = new Font("Segoe UI", Font.PLAIN, 16);
+
+        JButton viewSlotsBtn = createButton("View Slots", font);
+        JButton addVehicleBtn = createButton("Add Vehicle", font);
+        JButton viewTransBtn = createButton("View Transactions", font);
+        JButton exitChargeBtn = createButton("Exit & Charge", font);
+
+        viewSlotsBtn.setBounds(100, 40, 200, 40);
+        addVehicleBtn.setBounds(100, 90, 200, 40);
+        viewTransBtn.setBounds(100, 140, 200, 40);
+        exitChargeBtn.setBounds(100, 190, 200, 40);
+
+        add(viewSlotsBtn);
+        add(addVehicleBtn);
+        add(viewTransBtn);
+        add(exitChargeBtn);
+
+        viewSlotsBtn.addActionListener(e -> showViewSlotsPage());
+        addVehicleBtn.addActionListener(e -> showAddVehiclePage());
+        viewTransBtn.addActionListener(e -> showTransactionsPage());
+        exitChargeBtn.addActionListener(e -> showExitChargePage());
+    }
+
+    private JButton createButton(String text, Font font) {
+        JButton button = new JButton(text);
+        button.setFont(font);
+        button.setBackground(new Color(173, 216, 230)); // light blue
+        button.setForeground(Color.BLACK);
+        button.setFocusPainted(false);
+        return button;
+    }
+
+    private void showViewSlotsPage() {
+        JFrame frame = new JFrame("View Parking Slots");
+        frame.setSize(450, 300);
+        frame.setLocationRelativeTo(null);
+        frame.getContentPane().setBackground(new Color(240, 248, 255)); // AliceBlue
+
+        JTextArea area = new JTextArea();
+        area.setEditable(false);
+        area.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        area.setBackground(new Color(255, 255, 240)); // Ivory
+        JScrollPane scroll = new JScrollPane(area);
+        frame.add(scroll);
+
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM ParkingSlots")) {
+            while (rs.next()) {
+                area.append("Slot: " + rs.getString("SlotNumber") + " - Status: " + rs.getString("Status") + "\n");
+            }
+        } catch (SQLException e) {
+            area.setText("Error loading slots: " + e.getMessage());
+        }
+
+        frame.setVisible(true);
+    }
+
+    private void showAddVehiclePage() {
+        JFrame frame = new JFrame("Add New Vehicle");
+        frame.setSize(400, 300);
+        frame.setLocationRelativeTo(null);
+        frame.getContentPane().setBackground(new Color(255, 250, 240)); // FloralWhite
+        frame.setLayout(new GridLayout(5, 2, 10, 10));
+
+        JTextField licenseField = new JTextField();
+        JTextField typeField = new JTextField();
+        JTextField ownerField = new JTextField();
+        JTextArea resultArea = new JTextArea();
+        resultArea.setEditable(false);
+        resultArea.setBackground(new Color(245, 255, 250)); // MintCream
+
+        JButton addBtn = new JButton("Add Vehicle");
+        addBtn.setBackground(new Color(144, 238, 144)); // LightGreen
+
+        frame.add(new JLabel("License Plate:"));
+        frame.add(licenseField);
+        frame.add(new JLabel("Vehicle Type:"));
+        frame.add(typeField);
+        frame.add(new JLabel("Owner Name:"));
+        frame.add(ownerField);
+        frame.add(addBtn);
+        frame.add(new JLabel());
+        frame.add(new JScrollPane(resultArea));
+
+        addBtn.addActionListener(e -> {
+            try {
+                // 1. Insert into Vehicles
+                String sql = "INSERT INTO Vehicles (LicensePlate, VehicleType, OwnerName) VALUES (?, ?, ?)";
+                PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, licenseField.getText());
+                ps.setString(2, typeField.getText());
+                ps.setString(3, ownerField.getText());
+                ps.executeUpdate();
+
+                ResultSet keys = ps.getGeneratedKeys();
+                if (keys.next()) {
+                    int vehicleId = keys.getInt(1);
+
+                    // 2. Find an available slot
+                    Statement slotStmt = conn.createStatement();
+                    ResultSet slotRs = slotStmt.executeQuery("SELECT SlotID FROM ParkingSlots WHERE Status = 'Available' LIMIT 1");
+
+                    if (slotRs.next()) {
+                        int slotId = slotRs.getInt("SlotID");
+
+                        // 3. Insert into Transactions
+                        String txnSql = "INSERT INTO Transactions (VehicleID, SlotID, EntryTime) VALUES (?, ?, NOW())";
+                        PreparedStatement txnPs = conn.prepareStatement(txnSql);
+                        txnPs.setInt(1, vehicleId);
+                        txnPs.setInt(2, slotId);
+                        txnPs.executeUpdate();
+
+                        // 4. Update slot status
+                        String updateSlot = "UPDATE ParkingSlots SET Status = 'Occupied' WHERE SlotID = ?";
+                        PreparedStatement slotUpdate = conn.prepareStatement(updateSlot);
+                        slotUpdate.setInt(1, slotId);
+                        slotUpdate.executeUpdate();
+
+                        resultArea.setText("Vehicle Added\n Assigned to Slot ID: " + slotId);
+                    } else {
+                        resultArea.setText("No available parking slots.");
+                    }
+                }
+
+            } catch (SQLException ex) {
+                resultArea.setText("Error: " + ex.getMessage());
+            }
+        });
+
+        frame.setVisible(true);
+    }
+
+    private void showTransactionsPage() {
+        JFrame frame = new JFrame("View Transactions");
+        frame.setSize(700, 300);
+        frame.setLocationRelativeTo(null);
+        frame.getContentPane().setBackground(new Color(240, 255, 255)); // Azure
+
+        String[] columnNames = {"Transaction ID", "Vehicle ID", "Slot ID", "Entry Time", "Exit Time", "Charge"};
+        DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0);
+        JTable table = new JTable(tableModel);
+        table.setFillsViewportHeight(true);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        table.setRowHeight(25);
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
+        table.setBackground(new Color(255, 248, 220)); // Cornsilk
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        frame.add(scrollPane);
+
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM Transactions")) {
+            while (rs.next()) {
+                int tid = rs.getInt("TransactionID");
+                int vid = rs.getInt("VehicleID");
+                int sid = rs.getInt("SlotID");
+                String entry = rs.getString("EntryTime");
+                String exit = rs.getString("ExitTime") != null ? rs.getString("ExitTime") : "Still Parked";
+                String charge = rs.getString("ExitCharge") != null ? "₹" + rs.getString("ExitCharge") : "Pending";
+
+                Object[] rowData = {tid, vid, sid, entry, exit, charge};
+                tableModel.addRow(rowData);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(frame, "Error loading transactions: " + e.getMessage());
+        }
+
+        frame.setVisible(true);
+    }
+
+    private void showExitChargePage() {
+        JFrame frame = new JFrame("Exit and Charge");
+        frame.setSize(400, 250);
+        frame.setLocationRelativeTo(null);
+        frame.getContentPane().setBackground(new Color(255, 245, 238));
+        frame.setLayout(new GridLayout(4, 2, 10, 10));
+
+        JTextField transactionIdField = new JTextField();
+        JTextArea resultArea = new JTextArea();
+        resultArea.setEditable(false);
+        resultArea.setBackground(new Color(255, 255, 224));
+
+        JButton updateBtn = new JButton("Calculate & Update");
+        updateBtn.setBackground(new Color(255, 182, 193));
+
+        frame.add(new JLabel("Transaction ID:"));
+        frame.add(transactionIdField);
+        frame.add(updateBtn);
+        frame.add(new JLabel());
+        frame.add(new JScrollPane(resultArea));
+
+        updateBtn.addActionListener(e -> {
+            try {
+                int transactionId = Integer.parseInt(transactionIdField.getText());
+
+                // Get EntryTime
+                String getSql = "SELECT EntryTime FROM Transactions WHERE TransactionID = ?";
+                PreparedStatement getStmt = conn.prepareStatement(getSql);
+                getStmt.setInt(1, transactionId);
+                ResultSet rs = getStmt.executeQuery();
+
+                if (rs.next()) {
+                    Timestamp entryTime = rs.getTimestamp("EntryTime");
+                    Timestamp exitTime = new Timestamp(System.currentTimeMillis());
+
+                    long diffMillis = exitTime.getTime() - entryTime.getTime();
+                    long minutes = diffMillis / (1000 * 60);
+                    long hours = (long) Math.ceil(minutes / 60.0);
+                    double charge = hours * 20.0;
+
+                    // Update DB with calculated charge
+                    String updateSql = "UPDATE Transactions SET ExitTime = ?, ExitCharge = ? WHERE TransactionID = ?";
+                    PreparedStatement updateStmt = conn.prepareStatement(updateSql);
+                    updateStmt.setTimestamp(1, exitTime);
+                    updateStmt.setDouble(2, charge);
+                    updateStmt.setInt(3, transactionId);
+                    int updated = updateStmt.executeUpdate();
+
+                    if (updated > 0) {
+                        resultArea.setText("Exit Time: " + exitTime +
+                                "\nDuration: " + minutes + " minutes" +
+                                "\nCharge: ₹" + charge);
+                    } else {
+                        resultArea.setText("Transaction not found.");
+                    }
+
+                } else {
+                    resultArea.setText("No transaction with that ID.");
+                }
+
+            } catch (Exception ex) {
+                resultArea.setText("Error: " + ex.getMessage());
+            }
+        });
+
+        frame.setVisible(true);
+    }
+
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            new ParkingSystemApp().setVisible(true);
+        });
+    }
+}
